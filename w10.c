@@ -41,6 +41,7 @@ int get_id(char* text) {
     return id;
 }
 
+
 int main() {
     int pid;
 	int user_id = get_id("User ID: ");
@@ -50,6 +51,13 @@ int main() {
     // TODO: create key and message queue
     key_t key;
     int qid;
+
+    key = ftok(".", 'a');
+    qid = msgget(key, IPC_CREAT|IPC_NOWAIT|0666);
+    if(qid==-1){
+	    perror("msgget error: ");
+	    exit(0);
+    }
 
     switch (pid = fork()) {
         case -1:
@@ -62,21 +70,32 @@ int main() {
                 msgbuf_ack read_tim;
 
                 // TODO: Receive a message with IPC_NOWAIT
-                if () {
-                    msgbuf_ack ack;
+                if ((msgrcv(qid, (void*)buf, sizeof(buf), user_id, 0) > 0)) {
+                    buf.sender = receiver_id;
+			
+		    msgbuf_ack ack;
                     ack.msgtype = T_MSG + receiver_id; // you can remove this if you do not need this
                     printf("\33[2K\rUser %d:\t%s", buf.sender, buf.text); // This line erases the current line and prints the received message
                     printf("User %d:\t", user_id);
                     fflush(stdout);
 
                     // TODO: Send an ack message (current timestamp) to the sender
+		    time_t t = time(NULL);
+		    struct tm tm = *localtime(&t);
+		    strftime(ack.timestamp, sizeof(ack.timestamp), "%Y-%m-%d %H:%M:%S", &tm);
+
+		    if((msgsnd(qid, (void*)ack, sizeof(ack), 0) < 0)){
+			    perror("msgsnd error: ");
+			    exit(1);
+		    }
                 }
             
                 // TODO: Receive ack message using IPC_NOWAIT and store the messeg in `read_time`
-                if () {
+                if ((msgrcv(qid, (void*)read_tim, sizeof(read_tim), T_MSG+user_id, 0)) > 0) {
                     // NOTE: The printf statement below clears the current line and then sends a message
                     // This printf only works properly when the sender and receiver are running at the same itme
                     // Otherwise, it will clear the input from the user's perspective, but not the actual stdin
+		    
                     printf("\33[2K\rUser %d read message at %s\n", receiver_id, read_tim.timestamp);
                     printf("User %d:\t", user_id);
                     fflush(stdout);
@@ -99,6 +118,21 @@ int main() {
                 printf("User %d:\t", user_id);
                 get_input("", &line, &len);
                 // Your code
+
+		if(strcmp(line, "quit\n")==0){
+			kill(pid, SIGINT);
+			
+			free(line);
+			pid=getpid();
+			kill(pid, SIGINT);
+		}
+		else{
+			strncpy(buf.text, line, len);
+			if((msgsnd(pid, (void*)buf, sizeof(buf), 0))==-1){
+				perror("msgsnd error: ");
+				exit(1);
+			}
+		}
 
                 free(line);
             }
