@@ -70,7 +70,7 @@ int main() {
                 msgbuf_ack read_tim;
 
                 // TODO: Receive a message with IPC_NOWAIT
-                if ((msgrcv(qid, (void*)buf, sizeof(buf), user_id, 0) > 0)) {
+                if ((msgrcv(qid, (void*)&buf, sizeof(buf), user_id, 0) > 0)) {
                     buf.sender = receiver_id;
 			
 		    msgbuf_ack ack;
@@ -84,14 +84,14 @@ int main() {
 		    struct tm tm = *localtime(&t);
 		    strftime(ack.timestamp, sizeof(ack.timestamp), "%Y-%m-%d %H:%M:%S", &tm);
 
-		    if((msgsnd(qid, (void*)ack, sizeof(ack), 0) < 0)){
+		    if((msgsnd(qid, (void*)&ack, sizeof(ack), 0) < 0)){
 			    perror("msgsnd error: ");
 			    exit(1);
 		    }
                 }
             
                 // TODO: Receive ack message using IPC_NOWAIT and store the messeg in `read_time`
-                if ((msgrcv(qid, (void*)read_tim, sizeof(read_tim), T_MSG+user_id, 0)) > 0) {
+                if ((msgrcv(qid, (void*)&read_tim, sizeof(read_tim), T_MSG+user_id, 0)) > 0) {
                     // NOTE: The printf statement below clears the current line and then sends a message
                     // This printf only works properly when the sender and receiver are running at the same itme
                     // Otherwise, it will clear the input from the user's perspective, but not the actual stdin
@@ -128,7 +128,7 @@ int main() {
 		}
 		else{
 			strncpy(buf.text, line, len);
-			if((msgsnd(pid, (void*)buf, sizeof(buf), 0))==-1){
+			if((msgsnd(pid, (void*)&buf, sizeof(buf), 0))==-1){
 				perror("msgsnd error: ");
 				exit(1);
 			}
